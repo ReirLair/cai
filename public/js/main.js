@@ -180,169 +180,220 @@ document.addEventListener("DOMContentLoaded", () => {
     fetch("/api/matches")
       .then((response) => response.json())
       .then((data) => {
-        matches = data
+        console.log("Matches data received:", data)
+        // Make sure data is an array
+        matches = Array.isArray(data) ? data : []
         renderMatches()
       })
       .catch((error) => {
-        console.error("Error:", error)
+        console.error("Error loading matches:", error)
+        document.getElementById("matches-container").innerHTML =
+          '<div class="no-data">Error loading matches. Please try again later.</div>'
+        document.getElementById("live-matches-container").innerHTML =
+          '<div class="no-data">Error loading matches. Please try again later.</div>'
       })
   }
 
   // Render matches in UI
   function renderMatches() {
-    const matchesContainer = document.getElementById("matches-container")
-    const liveMatchesContainer = document.getElementById("live-matches-container")
+    try {
+      const matchesContainer = document.getElementById("matches-container")
+      const liveMatchesContainer = document.getElementById("live-matches-container")
 
-    // Clear containers
-    matchesContainer.innerHTML = ""
-    liveMatchesContainer.innerHTML = ""
+      // Clear containers
+      matchesContainer.innerHTML = ""
+      liveMatchesContainer.innerHTML = ""
 
-    // Sort matches by end time
-    matches.sort((a, b) => new Date(a.endTime) - new Date(b.endTime))
+      if (!matches || matches.length === 0) {
+        matchesContainer.innerHTML = '<div class="no-data">No upcoming matches available</div>'
+        liveMatchesContainer.innerHTML = '<div class="no-data">No live matches available</div>'
+        return
+      }
 
-    // Filter live matches (less than 90 minutes remaining)
-    const liveMatches = matches.filter((match) => {
-      const timeRemaining = (new Date(match.endTime) - new Date()) / (1000 * 60)
-      return timeRemaining < 90 && timeRemaining > 0
-    })
+      // Sort matches by end time
+      matches.sort((a, b) => new Date(a.endTime) - new Date(b.endTime))
 
-    // Render upcoming matches
-    if (matches.length === 0) {
-      matchesContainer.innerHTML = '<div class="no-data">No upcoming matches available</div>'
-    } else {
-      matches.forEach((match) => {
-        matchesContainer.appendChild(createMatchCard(match))
+      // Filter live matches (less than 90 minutes remaining)
+      const liveMatches = matches.filter((match) => {
+        if (!match.endTime) return false
+        const timeRemaining = (new Date(match.endTime) - new Date()) / (1000 * 60)
+        return timeRemaining < 90 && timeRemaining > 0
       })
-    }
 
-    // Render live matches
-    if (liveMatches.length === 0) {
-      liveMatchesContainer.innerHTML = '<div class="no-data">No live matches available</div>'
-    } else {
-      liveMatches.forEach((match) => {
-        liveMatchesContainer.appendChild(createMatchCard(match, true))
-      })
+      // Render upcoming matches
+      if (matches.length === 0) {
+        matchesContainer.innerHTML = '<div class="no-data">No upcoming matches available</div>'
+      } else {
+        matches.forEach((match) => {
+          matchesContainer.appendChild(createMatchCard(match))
+        })
+      }
+
+      // Render live matches
+      if (liveMatches.length === 0) {
+        liveMatchesContainer.innerHTML = '<div class="no-data">No live matches available</div>'
+      } else {
+        liveMatches.forEach((match) => {
+          liveMatchesContainer.appendChild(createMatchCard(match, true))
+        })
+      }
+    } catch (error) {
+      console.error("Error rendering matches:", error)
+      document.getElementById("matches-container").innerHTML =
+        '<div class="no-data">Error rendering matches. Please try again later.</div>'
+      document.getElementById("live-matches-container").innerHTML =
+        '<div class="no-data">Error rendering matches. Please try again later.</div>'
     }
   }
 
   // Create match card element
   function createMatchCard(match, isLive = false) {
-    const matchCard = document.createElement("div")
-    matchCard.className = "match-card"
+    try {
+      const matchCard = document.createElement("div")
+      matchCard.className = "match-card"
 
-    // Calculate time remaining
-    const endTime = new Date(match.endTime)
-    const now = new Date()
-    const timeRemaining = Math.max(0, (endTime - now) / 1000)
-    const minutesRemaining = Math.floor(timeRemaining / 60)
-    const secondsRemaining = Math.floor(timeRemaining % 60)
+      // Safely get match properties with fallbacks
+      const home = match.home || "Unknown Team"
+      const away = match.away || "Unknown Team"
+      const score = match.score || "0 - 0"
+      const result = match.result || "Pending"
+      const endTime = match.endTime ? new Date(match.endTime) : new Date()
+      const matchId = match.matchId || "unknown"
 
-    // Format time string
-    const timeString = isLive
-      ? `<span class="live-indicator">● LIVE</span> ${minutesRemaining}:${secondsRemaining < 10 ? "0" : ""}${secondsRemaining}`
-      : new Date(match.endTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      // Safely get possession and corners with fallbacks
+      const possession = match.possession || {}
+      const homePos = possession[home] || "50%"
+      const awayPos = possession[away] || "50%"
 
-    // Match header
-    const matchHeader = document.createElement("div")
-    matchHeader.className = "match-header"
-    matchHeader.innerHTML = `
-            <div class="match-time">
-                <i class="fas fa-clock"></i>
-                <span class="time-display" data-end-time="${match.endTime}">${timeString}</span>
-            </div>
-            <div class="match-id">ID: ${match.matchId.substring(0, 8)}</div>
-        `
+      const corners = match.corners || {}
+      const homeCorners = corners[home] || 0
+      const awayCorners = corners[away] || 0
 
-    // Match teams
-    const matchTeams = document.createElement("div")
-    matchTeams.className = "match-teams"
-    matchTeams.innerHTML = `
-            <div class="team home-team">
-                <div class="team-name">${match.home}</div>
-                <div class="team-score">${match.score.split(" - ")[0]}</div>
-            </div>
-            <div class="vs">VS</div>
-            <div class="team away-team">
-                <div class="team-name">${match.away}</div>
-                <div class="team-score">${match.score.split(" - ")[1]}</div>
-            </div>
-        `
+      // Calculate time remaining
+      const now = new Date()
+      const timeRemaining = Math.max(0, (endTime - now) / 1000)
+      const minutesRemaining = Math.floor(timeRemaining / 60)
+      const secondsRemaining = Math.floor(timeRemaining % 60)
 
-    // Match stats
-    const matchStats = document.createElement("div")
-    matchStats.className = "match-stats"
-    matchStats.innerHTML = `
-            <div class="stat">
-                <div class="stat-label">Possession</div>
-                <div class="stat-value">${match.possession[match.home]}</div>
-            </div>
-            <div class="stat">
-                <div class="stat-label">Corners</div>
-                <div class="stat-value">${match.corners[match.home]} - ${match.corners[match.away]}</div>
-            </div>
-            <div class="stat">
-                <div class="stat-label">Result</div>
-                <div class="stat-value">${match.result}</div>
-            </div>
-        `
+      // Format time string
+      const timeString = isLive
+        ? `<span class="live-indicator">● LIVE</span> ${minutesRemaining}:${secondsRemaining < 10 ? "0" : ""}${secondsRemaining}`
+        : endTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 
-    // Match markets
-    const matchMarkets = document.createElement("div")
-    matchMarkets.className = "match-markets"
+      // Match header
+      const matchHeader = document.createElement("div")
+      matchHeader.className = "match-header"
+      matchHeader.innerHTML = `
+      <div class="match-time">
+        <i class="fas fa-clock"></i>
+        <span class="time-display" data-end-time="${endTime.toISOString()}">${timeString}</span>
+      </div>
+      <div class="match-id">ID: ${matchId.substring(0, 8)}</div>
+    `
 
-    // Add markets
-    for (const [marketKey, marketOptions] of Object.entries(match.markets)) {
-      const market = document.createElement("div")
-      market.className = "market"
+      // Match teams
+      const matchTeams = document.createElement("div")
+      matchTeams.className = "match-teams"
+      matchTeams.innerHTML = `
+      <div class="team home-team">
+        <div class="team-name">${home}</div>
+        <div class="team-score">${score.split(" - ")[0]}</div>
+      </div>
+      <div class="vs">VS</div>
+      <div class="team away-team">
+        <div class="team-name">${away}</div>
+        <div class="team-score">${score.split(" - ")[1]}</div>
+      </div>
+    `
 
-      // Format market title
-      const marketTitle = marketKey.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+      // Match stats
+      const matchStats = document.createElement("div")
+      matchStats.className = "match-stats"
+      matchStats.innerHTML = `
+      <div class="stat">
+        <div class="stat-label">Possession</div>
+        <div class="stat-value">${homePos}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Corners</div>
+        <div class="stat-value">${homeCorners} - ${awayCorners}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Result</div>
+        <div class="stat-value">${result}</div>
+      </div>
+    `
 
-      market.innerHTML = `<div class="market-title">${marketTitle}</div>`
+      // Match markets
+      const matchMarkets = document.createElement("div")
+      matchMarkets.className = "match-markets"
 
-      const marketOptionsDiv = document.createElement("div")
-      marketOptionsDiv.className = "market-options"
+      // Add markets if they exist
+      if (match.markets) {
+        for (const [marketKey, marketOptions] of Object.entries(match.markets)) {
+          const market = document.createElement("div")
+          market.className = "market"
 
-      for (const [optionKey, optionData] of Object.entries(marketOptions)) {
-        const betOption = document.createElement("div")
-        betOption.className = "bet-option"
+          // Format market title
+          const marketTitle = marketKey.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
 
-        // Check if this option is in betslip
-        const isSelected = betslip.some(
-          (item) => item.matchId === match.matchId && item.market === marketKey && item.option === optionKey,
-        )
+          market.innerHTML = `<div class="market-title">${marketTitle}</div>`
 
-        if (isSelected) {
-          betOption.classList.add("selected")
+          const marketOptionsDiv = document.createElement("div")
+          marketOptionsDiv.className = "market-options"
+
+          for (const [optionKey, optionData] of Object.entries(marketOptions)) {
+            const betOption = document.createElement("div")
+            betOption.className = "bet-option"
+
+            // Check if this option is in betslip
+            const isSelected = betslip.some(
+              (item) => item.matchId === match.matchId && item.market === marketKey && item.option === optionKey,
+            )
+
+            if (isSelected) {
+              betOption.classList.add("selected")
+            }
+
+            const odds = optionData && typeof optionData.odds === "number" ? optionData.odds : 1.0
+
+            betOption.innerHTML = `
+            <span class="bet-option-name">${optionKey}</span>
+            <span class="bet-option-odds">${odds.toFixed(2)}</span>
+          `
+
+            // Add click event to add/remove from betslip
+            betOption.addEventListener("click", function () {
+              toggleBetSelection(match, marketKey, optionKey, odds)
+
+              // Toggle selected class
+              this.classList.toggle("selected")
+            })
+
+            marketOptionsDiv.appendChild(betOption)
+          }
+
+          market.appendChild(marketOptionsDiv)
+          matchMarkets.appendChild(market)
         }
-
-        betOption.innerHTML = `
-                    <span class="bet-option-name">${optionKey}</span>
-                    <span class="bet-option-odds">${optionData.odds.toFixed(2)}</span>
-                `
-
-        // Add click event to add/remove from betslip
-        betOption.addEventListener("click", function () {
-          toggleBetSelection(match, marketKey, optionKey, optionData.odds)
-
-          // Toggle selected class
-          this.classList.toggle("selected")
-        })
-
-        marketOptionsDiv.appendChild(betOption)
+      } else {
+        matchMarkets.innerHTML = '<div class="no-data">No betting markets available</div>'
       }
 
-      market.appendChild(marketOptionsDiv)
-      matchMarkets.appendChild(market)
+      // Assemble match card
+      matchCard.appendChild(matchHeader)
+      matchCard.appendChild(matchTeams)
+      matchCard.appendChild(matchStats)
+      matchCard.appendChild(matchMarkets)
+
+      return matchCard
+    } catch (error) {
+      console.error("Error creating match card:", error, match)
+      const errorCard = document.createElement("div")
+      errorCard.className = "match-card"
+      errorCard.innerHTML = '<div class="no-data">Error displaying match</div>'
+      return errorCard
     }
-
-    // Assemble match card
-    matchCard.appendChild(matchHeader)
-    matchCard.appendChild(matchTeams)
-    matchCard.appendChild(matchStats)
-    matchCard.appendChild(matchMarkets)
-
-    return matchCard
   }
 
   // Toggle bet selection in betslip
@@ -702,27 +753,34 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Update countdowns
   function updateCountdowns() {
-    document.querySelectorAll(".time-display").forEach((timeDisplay) => {
-      const endTime = new Date(timeDisplay.getAttribute("data-end-time"))
-      const now = new Date()
-      const timeRemaining = Math.max(0, (endTime - now) / 1000)
+    try {
+      document.querySelectorAll(".time-display").forEach((timeDisplay) => {
+        const endTimeStr = timeDisplay.getAttribute("data-end-time")
+        if (!endTimeStr) return
 
-      if (timeRemaining <= 0) {
-        timeDisplay.textContent = "Finished"
-        return
-      }
+        const endTime = new Date(endTimeStr)
+        const now = new Date()
+        const timeRemaining = Math.max(0, (endTime - now) / 1000)
 
-      const minutesRemaining = Math.floor(timeRemaining / 60)
-      const secondsRemaining = Math.floor(timeRemaining % 60)
+        if (timeRemaining <= 0) {
+          timeDisplay.textContent = "Finished"
+          return
+        }
 
-      // Check if this is a live match
-      if (timeDisplay.innerHTML.includes("LIVE")) {
-        timeDisplay.innerHTML = `<span class="live-indicator">● LIVE</span> ${minutesRemaining}:${secondsRemaining < 10 ? "0" : ""}${secondsRemaining}`
-      } else if (timeRemaining < 90 * 60) {
-        // Less than 90 minutes
-        timeDisplay.innerHTML = `<span class="live-indicator">● LIVE</span> ${minutesRemaining}:${secondsRemaining < 10 ? "0" : ""}${secondsRemaining}`
-      }
-    })
+        const minutesRemaining = Math.floor(timeRemaining / 60)
+        const secondsRemaining = Math.floor(timeRemaining % 60)
+
+        // Check if this is a live match
+        if (timeDisplay.innerHTML.includes("LIVE")) {
+          timeDisplay.innerHTML = `<span class="live-indicator">● LIVE</span> ${minutesRemaining}:${secondsRemaining < 10 ? "0" : ""}${secondsRemaining}`
+        } else if (timeRemaining < 90 * 60) {
+          // Less than 90 minutes
+          timeDisplay.innerHTML = `<span class="live-indicator">● LIVE</span> ${minutesRemaining}:${secondsRemaining < 10 ? "0" : ""}${secondsRemaining}`
+        }
+      })
+    } catch (error) {
+      console.error("Error updating countdowns:", error)
+    }
   }
 
   // Show notification
