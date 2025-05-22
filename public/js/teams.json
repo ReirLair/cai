@@ -1,0 +1,50 @@
+[
+  {
+    "team": "Arsenal",
+    "strength": 85
+  },
+  {
+    "team": "Manchester City",
+    "strength": 90
+  },
+  {
+    "team": "Liverpool",
+    "strength": 87
+  },
+  {
+    "team": "Chelsea",
+    "strength": 83
+  },
+  {
+    "team": "Manchester United",
+    "strength": 82
+  },
+  {
+    "team": "Tottenham",
+    "strength": 81
+  },
+  {
+    "team": "Newcastle",
+    "strength": 79
+  },
+  {
+    "team": "Aston Villa",
+    "strength": 78
+  },
+  {
+    "team": "West Ham",
+    "strength": 76
+  },
+  {
+    "team": "Leicester City",
+    "strength": 75
+  },
+  {
+    "team": "Everton",
+    "strength": 74
+  },
+  {
+    "team": "Wolves",
+    "strength": 73
+  }
+]
