@@ -255,7 +255,6 @@ document.addEventListener("DOMContentLoaded", () => {
       // Safely get match properties with fallbacks
       const home = match.home || "Unknown Team"
       const away = match.away || "Unknown Team"
-      const score = match.score || "0 - 0"
       const result = match.result || "Pending"
       const endTime = match.endTime ? new Date(match.endTime) : new Date()
       const matchId = match.matchId || "unknown"
@@ -291,18 +290,16 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="match-id">ID: ${matchId.substring(0, 8)}</div>
     `
 
-      // Match teams
+      // Match teams - Don't show scores
       const matchTeams = document.createElement("div")
       matchTeams.className = "match-teams"
       matchTeams.innerHTML = `
       <div class="team home-team">
         <div class="team-name">${home}</div>
-        <div class="team-score">${score.split(" - ")[0]}</div>
       </div>
       <div class="vs">VS</div>
       <div class="team away-team">
         <div class="team-name">${away}</div>
-        <div class="team-score">${score.split(" - ")[1]}</div>
       </div>
     `
 
@@ -319,8 +316,8 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="stat-value">${homeCorners} - ${awayCorners}</div>
       </div>
       <div class="stat">
-        <div class="stat-label">Result</div>
-        <div class="stat-value">${result}</div>
+        <div class="stat-label">Betting</div>
+        <div class="stat-value">${match.bettingOpen ? "Open" : "Closed"}</div>
       </div>
     `
 
@@ -364,6 +361,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Add click event to add/remove from betslip
             betOption.addEventListener("click", function () {
+              // Check if betting is open
+              if (!match.bettingOpen) {
+                showNotification("Betting is closed for this match", "error")
+                return
+              }
+
+              // Check if match is about to end (less than 1 minute)
+              const timeToEnd = (new Date(match.endTime) - new Date()) / (1000 * 60)
+              if (timeToEnd < 1) {
+                showNotification("Betting is closed for this match (less than 1 minute remaining)", "error")
+                return
+              }
+
               toggleBetSelection(match, marketKey, optionKey, odds)
 
               // Toggle selected class
@@ -543,7 +553,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Clear container
     historyContainer.innerHTML = ""
 
-    if (betHistory.length === 0) {
+    if (!betHistory || betHistory.length === 0) {
       historyContainer.innerHTML = '<div class="no-data">No bet history available</div>'
       return
     }
@@ -553,84 +563,103 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Render each bet
     betHistory.forEach((bet) => {
-      const betItem = document.createElement("div")
-      betItem.className = "bet-history-item"
+      try {
+        const betItem = document.createElement("div")
+        betItem.className = "bet-history-item"
 
-      // Format date
-      const betDate = new Date(bet.placedAt).toLocaleString()
+        // Format date
+        const betDate = new Date(bet.placedAt).toLocaleString()
 
-      // Bet header
-      const betHeader = document.createElement("div")
-      betHeader.className = "bet-history-header"
-      betHeader.innerHTML = `
-                <div class="bet-id">ID: ${bet.betId.substring(0, 8)}</div>
-                <div class="bet-status ${bet.status}">${bet.status.toUpperCase()}</div>
+        // Bet header
+        const betHeader = document.createElement("div")
+        betHeader.className = "bet-history-header"
+        betHeader.innerHTML = `
+        <div class="bet-id">ID: ${bet.betId.substring(0, 8)}</div>
+        <div class="bet-status ${bet.status}">${bet.status.toUpperCase()}</div>
+      `
+
+        // Bet details
+        const betDetails = document.createElement("div")
+        betDetails.className = "bet-details"
+
+        // Bet info
+        const betInfo = document.createElement("div")
+        betInfo.className = "bet-info"
+        betInfo.innerHTML = `
+        <div>
+          <div class="bet-info-label">Stake</div>
+          <div>${Number.parseFloat(bet.stake).toFixed(2)}</div>
+        </div>
+        <div>
+          <div class="bet-info-label">Total Odds</div>
+          <div>${bet.totalOdds}</div>
+        </div>
+        <div>
+          <div class="bet-info-label">Potential Win</div>
+          <div>${bet.potentialPayout}</div>
+        </div>
+        <div>
+          <div class="bet-info-label">Date</div>
+          <div>${betDate}</div>
+        </div>
+      `
+
+        // Bet selections
+        const betSelections = document.createElement("div")
+        betSelections.className = "bet-selections"
+
+        // Add each selection
+        if (bet.selections && Array.isArray(bet.selections)) {
+          bet.selections.forEach((selection) => {
+            // Find match details
+            const match = matches.find((m) => m.matchId === selection.matchId)
+
+            const selectionItem = document.createElement("div")
+            selectionItem.className = "bet-selection-item"
+
+            if (match) {
+              // If match is found in current matches
+              const marketOption = match.markets[selection.market]?.[selection.option]
+              const odds = marketOption?.odds || 0
+
+              selectionItem.innerHTML = `
+              <div class="bet-selection-teams">${match.home} vs ${match.away}</div>
+              <div class="bet-selection-details">
+                <div>
+                  <span>${selection.option}</span>
+                  <span class="bet-selection-market">${selection.market.replace(/_/g, " ")}</span>
+                </div>
+                <div class="selection-odds">${odds.toFixed(2)}</div>
+              </div>
             `
-
-      // Bet details
-      const betDetails = document.createElement("div")
-      betDetails.className = "bet-details"
-
-      // Bet info
-      const betInfo = document.createElement("div")
-      betInfo.className = "bet-info"
-      betInfo.innerHTML = `
+            } else {
+              // If match is not found (already finished)
+              selectionItem.innerHTML = `
+              <div class="bet-selection-teams">Match ID: ${selection.matchId.substring(0, 8)}</div>
+              <div class="bet-selection-details">
                 <div>
-                    <div class="bet-info-label">Stake</div>
-                    <div>${bet.stake.toFixed(2)}</div>
+                  <span>${selection.option}</span>
+                  <span class="bet-selection-market">${selection.market.replace(/_/g, " ")}</span>
                 </div>
-                <div>
-                    <div class="bet-info-label">Total Odds</div>
-                    <div>${bet.totalOdds}</div>
-                </div>
-                <div>
-                    <div class="bet-info-label">Potential Win</div>
-                    <div>${bet.potentialPayout}</div>
-                </div>
-                <div>
-                    <div class="bet-info-label">Date</div>
-                    <div>${betDate}</div>
-                </div>
+              </div>
             `
+            }
 
-      // Bet selections
-      const betSelections = document.createElement("div")
-      betSelections.className = "bet-selections"
-
-      // Add each selection
-      bet.selections.forEach((selection) => {
-        // Find match details
-        const match = matches.find((m) => m.matchId === selection.matchId) || {
-          home: "Unknown",
-          away: "Unknown",
-          markets: { [selection.market]: { [selection.option]: { odds: 0 } } },
+            betSelections.appendChild(selectionItem)
+          })
         }
 
-        const selectionItem = document.createElement("div")
-        selectionItem.className = "bet-selection-item"
+        // Assemble bet item
+        betDetails.appendChild(betInfo)
+        betDetails.appendChild(betSelections)
 
-        selectionItem.innerHTML = `
-                    <div class="bet-selection-teams">${match.home} vs ${match.away}</div>
-                    <div class="bet-selection-details">
-                        <div>
-                            <span>${selection.option}</span>
-                            <span class="bet-selection-market">${selection.market.replace(/_/g, " ")}</span>
-                        </div>
-                        <div class="selection-odds">${match.markets[selection.market][selection.option].odds.toFixed(2)}</div>
-                    </div>
-                `
+        betItem.appendChild(betHeader)
+        betItem.appendChild(betDetails)
 
-        betSelections.appendChild(selectionItem)
-      })
-
-      // Assemble bet item
-      betDetails.appendChild(betInfo)
-      betDetails.appendChild(betSelections)
-
-      betItem.appendChild(betHeader)
-      betItem.appendChild(betDetails)
-
-      historyContainer.appendChild(betItem)
+        historyContainer.appendChild(betItem)
+      } catch (error) {
+        console.error("Error rendering bet history item:", error, bet)
+      }
     })
   }
 
