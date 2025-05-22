@@ -1,5 +1,6 @@
 const express = require('express');
 const fs = require('fs');
+const path = require('path');
 const bcrypt = require('bcrypt');
 const cron = require('node-cron');
 const { v4: uuidv4 } = require('uuid');
