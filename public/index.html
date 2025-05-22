@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Football Betting App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 400px;
+            max-width: 90%;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="app" class="container mx-auto p-4">
+        <!-- Header -->
+        <header class="bg-blue-600 text-white p-4 rounded-lg shadow mb-6">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-bold">Football Betting App</h1>
+                <div id="user-info" class="flex items-center space-x-4">
+                    <span id="user-balance" class="hidden">Balance: $0</span>
+                    <button id="logout-btn" class="hidden bg-red-500 px-4 py-2 rounded hover:bg-red-600">Logout</button>
+                    <button id="login-btn" class="bg-green-500 px-4 py-2 rounded hover:bg-green-600">Login</button>
+                    <button id="register-btn" class="bg-yellow-500 px-4 py-2 rounded hover:bg-yellow-600">Register</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tabs -->
+        <div class="flex space-x-4 mb-6">
+            <button id="matches-tab" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Matches</button>
+            <button id="bets-tab" class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">My Bets</button>
+            <button id="leaderboard-tab" class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">Leaderboard</button>
+            <button id="standings-tab" class="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400">Standings</button>
+        </div>
+
+        <!-- Content -->
+        <div id="content" class="bg-white p-6 rounded-lg shadow">
+            <!-- Matches Section -->
+            <div id="matches-section">
+                <h2 class="text-xl font-bold mb-4">Available Matches</h2>
+                <div id="matches-list" class="space-y-4"></div>
+                <div id="bet-slip" class="mt-6 p-4 bg-gray-50 rounded-lg hidden">
+                    <h3 class="text-lg font-bold mb-2">Bet Slip</h3>
+                    <div id="bet-selections" class="space-y-2"></div>
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium">Stake ($):</label>
+                        <input id="stake-input" type="number" min="1" class="w-full p-2 border rounded" placeholder="Enter stake">
+                    </div>
+                    <p class="mt-2">Total Odds: <span id="total-odds">0.00</span></p>
+                    <p>Potential Payout: $<span id="potential-payout">0.00</span></p>
+                    <button id="place-bet-btn" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Place Bet</button>
+                </div>
+            </div>
+
+            <!-- Bet History Section -->
+            <div id="bets-section" class="hidden">
+                <h2 class="text-xl font-bold mb-4">My Bet History</h2>
+                <div id="bets-list" class="space-y-4"></div>
+            </div>
+
+            <!-- Leaderboard Section -->
+            <div id="leaderboard-section" class="hidden">
+                <h2 class="text-xl font-bold mb-4">Leaderboard</h2>
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-200">
+                            <th class="p-2">Rank</th>
+                            <th class="p-2">Username</th>
+                            <th class="p-2">Balance</th>
+                            <th class="p-2">Total Bets</th>
+                            <th class="p-2">Wins</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-list"></tbody>
+                </table>
+            </div>
+
+            <!-- Standings Section -->
+            <div id="standings-section" class="hidden">
+                <h2 class="text-xl font-bold mb-4">League Standings</h2>
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-200">
+                            <th class="p-2">Team</th>
+                            <th class="p-2">Wins</th>
+                            <th class="p-2">Draws</th>
+                            <th class="p-2">Losses</th>
+                            <th class="p-2">Points</th>
+                        </tr>
+                    </thead>
+                    <tbody id="standings-list"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Modals -->
+        <div id="login-modal" class="modal">
+            <div class="modal-content">
+                <h2 class="text-xl font-bold mb-4">Login</h2>
+                <div class="space-y-4">
+                    <input id="login-username" type="text" class="w-full p-2 border rounded" placeholder="Username">
+                    <input id="login-password" type="password" class="w-full p-2 border rounded" placeholder="Password">
+                    <button id="login-submit" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Login</button>
+                    <button id="login-cancel" class="w-full bg-gray-300 text-gray-800 p-2 rounded hover:bg-gray-400">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="register-modal" class="modal">
+            <div class="modal-content">
+                <h2 class="text-xl font-bold mb-4">Register</h2>
+                <div class="space-y-4">
+                    <input id="register-username" type="text" class="w-full p-2 border rounded" placeholder="Username">
+                    <input id="register-password" type="password" class="w-full p-2 border rounded" placeholder="Password">
+                    <input id="register-socials" type="text" class="w-full p-2 border rounded" placeholder="Socials (optional)">
+                    <button id="register-submit" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Register</button>
+                    <button id="register-cancel" class="w-full bg-gray-300 text-gray-800 p-2 rounded hover:bg-gray-400">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000';
+        let currentUser = null;
+        let betSlip = [];
+
+        // Session Validation
+        async function validateSession() {
+            const sessionToken = localStorage.getItem('sessionToken');
+            if (!sessionToken) return false;
+
+            try {
+                const response = await fetch(`${API_URL}/api/validate-session`, {
+                    headers: { 'Authorization': `Bearer ${sessionToken}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = data.user;
+                    updateUserUI();
+                    return true;
+                }
+            } catch (error) {
+                console.error('Session validation failed:', error);
+            }
+            localStorage.removeItem('sessionToken');
+            return false;
+        }
+
+        // Update UI based on user state
+        function updateUserUI() {
+            document.getElementById('user-balance').textContent = `Balance: $${currentUser.balance.toFixed(2)}`;
+            document.getElementById('user-balance').classList.toggle('hidden', !currentUser);
+            document.getElementById('logout-btn').classList.toggle('hidden', !currentUser);
+            document.getElementById('login-btn').classList.toggle('hidden', !!currentUser);
+            document.getElementById('register-btn').classList.toggle('hidden', !!currentUser);
+        }
+
+        // Tab Navigation
+        function switchTab(tabId) {
+            const sections = ['matches', 'bets', 'leaderboard', 'standings'];
+            sections.forEach(section => {
+                document.getElementById(`${section}-section`).classList.toggle('hidden', section !== tabId);
+                document.getElementById(`${section}-tab`).classList.toggle('bg-blue-500', section === tabId);
+                document.getElementById(`${section}-tab`).classList.toggle('text-white', section === tabId);
+                document.getElementById(`${section}-tab`).classList.toggle('bg-gray-300', section !== tabId);
+                document.getElementById(`${section}-tab`).classList.toggle('text-gray-800', section !== tabId);
+            });
+            if (tabId === 'matches') loadMatches();
+            if (tabId === 'bets') loadBetHistory();
+            if (tabId === 'leaderboard') loadLeaderboard();
+            if (tabId === 'standings') loadStandings();
+        }
+
+        // Load Matches
+        async function loadMatches() {
+            try {
+                const response = await fetch(`${API_URL}/api/matches`);
+                const matches = await response.json();
+                const matchesList = document.getElementById('matches-list');
+                matchesList.innerHTML = '';
+
+                matches.forEach(match => {
+                    const matchCard = document.createElement('div');
+                    matchCard.className = 'p-4 bg-gray-50 rounded-lg';
+                    matchCard.innerHTML = `
+                        <h3 class="font-bold">${match.home} vs ${match.away}</h3>
+                        <p>Ends: ${new Date(match.endTime).toLocaleString()}</p>
+                        <p>Betting: ${match.bettingOpen ? 'Open' : 'Closed'}</p>
+                        <div class="mt-2">
+                            <h4 class="font-semibold">Match Winner</h4>
+                            <button data-match-id="${match.matchId}" data-market="match_winner" data-option="${match.home}" class="bet-btn px-2 py-1 bg-blue-200 rounded m-1">${match.home} (${match.markets.match_winner[match.home].odds})</button>
+                            <button data-match-id="${match.matchId}" data-market="match_winner" data-option="Draw" class="bet-btn px-2 py-1 bg-blue-200 rounded m-1">Draw (${match.markets.match_winner.Draw.odds})</button>
+                            <button data-match-id="${match.matchId}" data-market="match_winner" data-option="${match.away}" class="bet-btn px-2 py-1 bg-blue-200 rounded m-1">${match.away} (${match.markets.match_winner[match.away].odds})</button>
+                        </div>
+                        <div class="mt-2">
+                            <h4 class="font-semibold">Other Markets</h4>
+                            <button data-match-id="${match.matchId}" data-market="over_1_5" data-option="over_1_5" class="bet-btn px-2 py-1 bg-blue-200 rounded m-1">Over 1.5 (${match.markets.over_1_5.odds})</button>
+                            <button data-match-id="${match.matchId}" data-market="both_teams_to_score" data-option="both_teams_to_score" class="bet-btn px-2 py-1 bg-blue-200 rounded m-1">BTTS (${match.markets.both_teams_to_score.odds})</button>
+                        </div>
+                    `;
+                    matchesList.appendChild(matchCard);
+                });
+
+                document.querySelectorAll('.bet-btn').forEach(btn => {
+                    btn.addEventListener('click', () => addToBetSlip(btn.dataset));
+                });
+            } catch (error) {
+                console.error('Error loading matches:', error);
+            }
+        }
+
+        // Bet Slip Management
+        function addToBetSlip(data) {
+            if (!currentUser) {
+                alert('Please login to place bets');
+                return;
+            }
+            const match = (await (await fetch(`${API_URL}/api/matches`)).json()).find(m => m.matchId === data.matchId);
+            if (!match.bettingOpen || new Date() > new Date(match.endTime) - 60000) {
+                alert('Betting is closed for this match');
+                return;
+            }
+            if (betSlip.some(b => b.matchId === data.matchId && b.market === data.market && b.option !== data.option)) {
+                alert('Conflicting selection for this match');
+                return;
+            }
+            betSlip.push(data);
+            updateBetSlip();
+        }
+
+        function updateBetSlip() {
+            const betSelections = document.getElementById('bet-selections');
+            betSelections.innerHTML = '';
+            let totalOdds = 1;
+
+            betSlip.forEach((bet, index) => {
+                const selectionDiv = document.createElement('div');
+                selectionDiv.className = 'flex justify-between';
+                selectionDiv.innerHTML = `
+                    <span>${bet.matchId.slice(0, 8)}: ${bet.market} - ${bet.option}</span>
+                    <button data-index="${index}" class="remove-bet text-red-500">Remove</button>
+                `;
+                betSelections.appendChild(selectionDiv);
+                totalOdds *= (async () => {
+                    const matches = await (await fetch(`${API_URL}/api/matches`)).json();
+                    const match = matches.find(m => m.matchId === bet.matchId);
+                    return match.markets[bet.market][bet.option].odds;
+                })();
+            });
+
+            document.getElementById('bet-slip').classList.toggle('hidden', betSlip.length === 0);
+            document.getElementById('total-odds').textContent = totalOdds.toFixed(2);
+            document.getElementById('potential-payout').textContent = (totalOdds * (parseFloat(document.getElementById('stake-input').value) || 0)).toFixed(2);
+
+            document.querySelectorAll('.remove-bet').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    betSlip.splice(btn.dataset.index, 1);
+                    updateBetSlip();
+                });
+            });
+        }
+
+        // Place Bet
+        document.getElementById('place-bet-btn').addEventListener('click', async () => {
+            if (!betSlip.length) {
+                alert('No selections in bet slip');
+                return;
+            }
+            const stake = parseFloat(document.getElementById('stake-input').value);
+            if (!stake || stake <= 0) {
+                alert('Invalid stake');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/bet`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: currentUser.username, betSelections: betSlip, stake })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Bet placed successfully');
+                    betSlip = [];
+                    updateBetSlip();
+                    const userResponse = await fetch(`${API_URL}/api/validate-session`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('sessionToken')}` }
+                    });
+                    currentUser = (await userResponse.json()).user;
+                    updateUserUI();
+                    loadBetHistory();
+                } else {
+                    alert(data.error);
+                }
+            } catch (error) {
+                console.error('Error placing bet:', error);
+            }
+        });
+
+        // Load Bet History
+        async function loadBetHistory() {
+            if (!currentUser) return;
+            try {
+                const response = await fetch(`${API_URL}/api/bet-history/${currentUser.username}`);
+                const bets = await response.json();
+                const betsList = document.getElementById('bets-list');
+                betsList.innerHTML = '';
+
+                bets.forEach(bet => {
+                    const betCard = document.createElement('div');
+                    betCard.className = 'p-4 bg-gray-50 rounded-lg';
+                    betCard.innerHTML = `
+                        <p>Bet ID: ${bet.betId.slice(0, 8)}</p>
+                        <p>Stake: $${bet.stake}</p>
+                        <p>Odds: ${bet.totalOdds}</p>
+                        <p>Payout: $${bet.potentialPayout}</p>
+                        <p>Status: ${bet.status}</p>
+                        <p>Placed: ${new Date(bet.placedAt).toLocaleString()}</p>
+                    `;
+                    betsList.appendChild(betCard);
+                });
+            } catch (error) {
+                console.error('Error loading bet history:', error);
+            }
+        }
+
+        // Load Leaderboard
+        async function loadLeaderboard() {
+            try {
+                const response = await fetch(`${API_URL}/api/leaderboard`);
+                const leaderboard = await response.json();
+                const leaderboardList = document.getElementById('leaderboard-list');
+                leaderboardList.innerHTML = '';
+
+                leaderboard.forEach((entry, index) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="p-2">${index + 1}</td>
+                        <td class="p-2">${entry.username}</td>
+                        <td class="p-2">$${entry.balance.toFixed(2)}</td>
+                        <td class="p-2">${entry.totalBets}</td>
+                        <td class="p-2">${entry.totalWon}</td>
+                    `;
+                    leaderboardList.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading leaderboard:', error);
+            }
+        }
+
+        // Load Standings
+        async function loadStandings() {
+            try {
+                const response = await fetch(`${API_URL}/api/standings`);
+                const standings = await response.json();
+                const standingsList = document.getElementById('standings-list');
+                standingsList.innerHTML = '';
+
+                standings.forEach(team => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="p-2">${team.team}</td>
+                        <td class="p-2">${team.wins}</td>
+                        <td class="p-2">${team.draws}</td>
+                        <td class="p-2">${team.losses}</td>
+                        <td class="p-2">${team.points}</td>
+                    `;
+                    standingsList.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading standings:', error);
+            }
+        }
+
+        // Modal Handling
+        function openModal(modalId) {
+            document.getElementById(modalId).style.display = 'flex';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Login
+        document.getElementById('login-btn').addEventListener('click', () => openModal('login-modal'));
+        document.getElementById('login-cancel').addEventListener('click', () => closeModal('login-modal'));
+        document.getElementById('login-submit').addEventListener('click', async () => {
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    currentUser = data.user;
+                    localStorage.setItem('sessionToken', uuidv4()); // Mock session token
+                    updateUserUI();
+                    closeModal('login-modal');
+                    switchTab('matches');
+                } else {
+                    alert(data.error);
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+            }
+        });
+
+        // Register
+        document.getElementById('register-btn').addEventListener('click', () => openModal('register-modal'));
+        document.getElementById('register-cancel').addEventListener('click', () => closeModal('register-modal'));
+        document.getElementById('register-submit').addEventListener('click', async () => {
+            const username = document.getElementById('register-username').value;
+            const password = document.getElementById('register-password').value;
+            const socials = document.getElementById('register-socials').value;
+
+            try {
+                const response = await fetch(`${API_URL}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, socials })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    currentUser = data.user;
+                    localStorage.setItem('sessionToken', uuidv4());
+                    updateUserUI();
+                    closeModal('register-modal');
+                    switchTab('matches');
+                } else {
+                    alert(data.error);
+                }
+            } catch (error) {
+                console.error('Register error:', error);
+            }
+        });
+
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            localStorage.removeItem('sessionToken');
+            currentUser = null;
+            betSlip = [];
+            updateBetSlip();
+            updateUserUI();
+            switchTab('matches');
+        });
+
+        // Initialize
+        validateSession().then(isValid => {
+            if (isValid) {
+                switchTab('matches');
+            } else {
+                switchTab('matches');
+            }
+        });
+
+        // Tab Event Listeners
+        document.getElementById('matches-tab').addEventListener('click', () => switchTab('matches'));
+        document.getElementById('bets-tab').addEventListener('click', () => switchTab('bets'));
+        document.getElementById('leaderboard-tab').addEventListener('click', () => switchTab('leaderboard'));
+        document.getElementById('standings-tab').addEventListener('click', () => switchTab('standings'));
+    </script>
+</body>
+</html>
